@@ -1,6 +1,6 @@
 {
   "name": "myfeed-scrape",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "scrapes websites and returns nice informations",
   "main": "index.js",
   "scripts": {
