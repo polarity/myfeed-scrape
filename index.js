@@ -1,7 +1,6 @@
-var cheerio, parseFlickr, parseImage, parseRegularWebsite, request;
+var cheerio, parseImageSite, parseImage, parseRegularWebsite, request;
 
 request = require('request');
-
 cheerio = require('cheerio');
 
 parseImage = function(url) {
@@ -13,7 +12,7 @@ parseImage = function(url) {
   };
 };
 
-parseFlickr = function(html) {
+parseImageSite = function(html) {
   var $, description, thumbnail, title;
   $ = cheerio.load(html);
   title = $('meta[property="og:title"]').attr('content');
@@ -60,10 +59,10 @@ parseRegularWebsite = function(html) {
 exports.scrape = function(req, res) {
   return request(req.body.url, function(error, response, html) {
     var parsedObj;
-    if (req.body.url.indexOf('flickr.com') !== -1) {
-      parsedObj = parseFlickr(html);
-    } else if (req.body.url.indexOf('.jpg') !== -1 || req.body.url.indexOf('.jpeg') !== -1) {
+    if (req.body.url.indexOf('.jpg') !== -1 || req.body.url.indexOf('.jpeg') !== -1 || req.body.url.indexOf('.gif') !== -1 || req.body.url.indexOf('.png') !== -1) {
       parsedObj = parseImage(req.body.url);
+    } else if (req.body.url.indexOf('flickr.com/') !== -1 || req.body.url.indexOf('imgur.com/') !== -1) {
+      parsedObj = parseImageSite(html);
     } else {
       parsedObj = parseRegularWebsite(html);
     }
