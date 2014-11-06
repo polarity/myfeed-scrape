@@ -55,12 +55,31 @@ parseVideoSite = function(html, url) {
 
 // parse a known sound portal
 parseSoundcloud = function(response, url) {
+  var parsedBody;
   parsedBody = JSON.parse(response.body);
   return {
     title: parsedBody.title,
     description: parsedBody.description,
     thumbnail: parsedBody.thumbnail_url,
     type: 'sound',
+    url: url,
+    embed: parsedBody.html,
+    full_response: parsedBody
+  };
+};
+
+// parse a known video portal
+parseYoutube = function(response, url) {
+  var parsedBody;
+  if (typeof response.body != 'object'){
+    parsedBody = JSON.parse(response.body);
+  } else {
+    parsedBody = response.body;
+  }
+  return {
+    title: parsedBody.title,
+    thumbnail: parsedBody.thumbnail_url,
+    type: 'video',
     url: url,
     embed: parsedBody.html,
     full_response: parsedBody
@@ -88,7 +107,15 @@ exports.scrape = function(req, res) {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(parsedObj));
     });
-  } else if (req.body.url.indexOf('vimeo.com/') !== -1 || req.body.url.indexOf('youtube.com/') !== -1){
+  } else if (req.body.url.indexOf('youtube.com/') !== -1 || req.body.url.indexOf('youtu.be/') !== -1 ) {
+      request('http://www.youtube.com/oembed?url='+req.body.url+'&format=json', function(error, response, html){
+      parsedObj = parseYoutube(response, req.body.url);
+
+      // send header and response
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(parsedObj));
+    });
+  } else if (req.body.url.indexOf('vimeo.com/') !== -1){
     request(req.body.url, function(error, response, html){
       parsedObj = parseVideoSite(html, req.body.url);
  
@@ -107,7 +134,6 @@ exports.scrape = function(req, res) {
   } else {
     request(req.body.url, function(error, response, html){
       parsedObj = parseRegularWebsite(html, req.body.url);
-      console.log(parsedObj);
  
       // send header and response
       res.setHeader('Content-Type', 'application/json');
