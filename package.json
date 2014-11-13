@@ -13,7 +13,8 @@
   "license": "BSD-2-Clause",
   "dependencies": {
     "request": "~2.40.0",
-    "cheerio": "~0.17.0"
+    "cheerio": "~0.17.0",
+    "boom": "~2.6.0"
   },
   "repository": {
     "type": "git",

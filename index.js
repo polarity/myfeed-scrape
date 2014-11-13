@@ -2,6 +2,7 @@ var cheerio, parseImageSite, parseImage, parseRegularWebsite, request;
 
 request = require('request');
 cheerio = require('cheerio');
+Boom = require('boom');
 
 // parse a normal website
 parseRegularWebsite = function(html, url) {
@@ -56,7 +57,11 @@ parseVideoSite = function(html, url) {
 // parse a known sound portal
 parseSoundcloud = function(response, url) {
   var parsedBody;
-  parsedBody = JSON.parse(response.body);
+  if (typeof response.body != 'object'){
+    parsedBody = JSON.parse(response.body);
+  } else {
+    parsedBody = response.body;
+  }
   return {
     title: parsedBody.title,
     description: parsedBody.description,
@@ -65,6 +70,20 @@ parseSoundcloud = function(response, url) {
     url: url,
     embed: parsedBody.html,
     full_response: parsedBody
+  };
+};
+
+// parse twitter
+parseTwitter = function(response, url) {
+  var parsedBody;
+  $ = cheerio.load(response);
+  return {
+    title: $('meta[property="og:title"]').attr('content'),
+    description: $('.permalink-tweet p.js-tweet-text').text(),
+    thumbnail: $('meta[property="og:image"]').attr('content'),
+    type: 'oembed',
+    url: $('meta[property="og:url"]').attr('content'),
+    embed: '<blockquote data-align="center" class="twitter-tweet" lang="de"><p>'+$('.permalink-tweet p.js-tweet-text').text()+'</p>&mdash; '+$('div.permalink-tweet').attr('data-name')+' (@'+$('div.permalink-tweet').attr('data-screen-name')+') <a href="'+$('meta[property="og:url"]').attr('content')+'">13. November 2014</a></blockquote>'
   };
 };
 
@@ -130,6 +149,19 @@ exports.scrape = function(req, res) {
       // send header and response
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(parsedObj));
+    });
+  } else if (req.body.url.indexOf('twitter.com/') !== -1){
+    request(req.body.url, function(error, response, html){
+      if(response.statusCode == 200){
+        parsedObj = parseTwitter(html, req.body.url);
+        // send header and response
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(parsedObj));
+      } else {
+        // respond with error
+        response = Boom.badRequest('Twitter access failed');
+        res.status(response.output.statusCode).send(response.output.payload);
+      }
     });
   } else {
     request(req.body.url, function(error, response, html){
