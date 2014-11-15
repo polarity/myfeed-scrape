@@ -21,11 +21,12 @@ parseRegularWebsite = function(html, url) {
   if (apple_icon && !thumbnail) {
     thumbnail = req.body.url + '/' + apple_icon;
   }
+  type = $('meta[property="og:type"]').attr('content');
   return {
     title: title,
     description: description,
     thumbnail: thumbnail,
-    type: 'url',
+    type: type ? type: 'url',
     url: url
   };
 };
@@ -33,10 +34,11 @@ parseRegularWebsite = function(html, url) {
 // parse a image file
 parseImage = function(html, url) {
   var data = parseRegularWebsite(html, url);
-  data.title = "";
+  data.title = "Photo";
   data.description = "";
   data.thumbnail = url;
   data.type = 'image';
+  data.embed = '<a href="'+url+'"><img src="'+url+'" alt="Photo"></a>';
   return data;
 };
 
@@ -44,6 +46,7 @@ parseImage = function(html, url) {
 parseImageSite = function(html, url) {
   var data = parseRegularWebsite(html, url);
   data.type = 'image';
+  data.embed = '<a href="'+url+'" title="'+data.title+'"><img src="'+data.thumbnail+'" alt="'+data.title+'"></a>';
   return data;
 };
 
@@ -51,6 +54,26 @@ parseImageSite = function(html, url) {
 parseVideoSite = function(html, url) {
   var data = parseRegularWebsite(html, url);
   data.type = 'video';
+  return data;
+};
+
+// parse a known image hoster
+parseImgur = function(html, url) {
+  var data = parseRegularWebsite(html, url);
+  $ = cheerio.load(html);
+  if(data.type == 'video.other'){
+    data.type = 'video';
+    data.content_url = $('meta[name="twitter:player:stream"]').attr('content');
+    data.embed = '<video style="width: 100%;" preload="auto" autoplay="autoplay" muted="muted" loop>\
+<source src="'+data.content_url.replace('.mp4', '.webm')+'" type="video/webm">\
+<source src="'+data.content_url+'" type="video/mp4">\
+<img src="'+data.thumbnail.replace('?fb','')+'" title="Your browser does not support the video tag">\
+</video>';
+  } else {
+    data.type = 'image';
+    data.embed = '<a href="'+url+'" title="'+data.title+'"><img src="'+data.thumbnail.replace('?fb','')+'" alt="'+data.title+'"></a>';
+    data.content_url = data.thumbnail.replace('?fb','');
+  }
   return data;
 };
 
@@ -73,6 +96,24 @@ parseSoundcloud = function(response, url) {
   };
 };
 
+// instagram oembed
+parseInstagram = function(response, url){
+  var parsedBody;
+  if (typeof response.body != 'object'){
+    parsedBody = JSON.parse(response.body);
+  } else {
+    parsedBody = response.body;
+  }
+  return {
+    title: parsedBody.title,
+    thumbnail: parsedBody.thumbnail_url,
+    type: 'image',
+    url: url,
+    embed: parsedBody.html.replace('max-width:658px; ', ''),
+    full_response: parsedBody
+  };
+};
+
 // parse twitter
 parseTwitter = function(response, url) {
   var parsedBody;
@@ -81,7 +122,7 @@ parseTwitter = function(response, url) {
     title: $('meta[property="og:title"]').attr('content'),
     description: $('.permalink-tweet p.js-tweet-text').text(),
     thumbnail: $('meta[property="og:image"]').attr('content'),
-    type: 'oembed',
+    type: 'article',
     url: $('meta[property="og:url"]').attr('content'),
     embed: '<blockquote data-align="center" class="twitter-tweet" lang="de"><p>'+$('.permalink-tweet p.js-tweet-text').text()+'</p>&mdash; '+$('div.permalink-tweet').attr('data-name')+' (@'+$('div.permalink-tweet').attr('data-screen-name')+') <a href="'+$('meta[property="og:url"]').attr('content')+'">13. November 2014</a></blockquote>'
   };
@@ -118,9 +159,17 @@ exports.scrape = function(req, res) {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(parsedObj));
     });
-  } else if (req.body.url.indexOf('flickr.com/') !== -1 || req.body.url.indexOf('imgur.com/') !== -1) {
+  } else if (req.body.url.indexOf('flickr.com/') !== -1) {
     request(req.body.url, function(error, response, html){
       parsedObj = parseImageSite(html, req.body.url);
+ 
+      // send header and response
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(parsedObj));
+    });
+  } else if (req.body.url.indexOf('imgur.com/') !== -1) {
+    request(req.body.url, function(error, response, html){
+      parsedObj = parseImgur(html, req.body.url);
  
       // send header and response
       res.setHeader('Content-Type', 'application/json');
@@ -163,10 +212,24 @@ exports.scrape = function(req, res) {
         res.status(response.output.statusCode).send(response.output.payload);
       }
     });
+  } else if (req.body.url.indexOf('instagram.com/') !== -1){
+    request('http://api.instagram.com/oembed?beta=true&url='+req.body.url, function(error, response, html){
+      if(response.statusCode == 200){
+        parsedObj = parseInstagram(response, req.body.url);
+        // send header and response
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(parsedObj));
+      } else {
+        // respond with error
+        response = Boom.badRequest('Instagram access failed');
+        res.status(response.output.statusCode).send(response.output.payload);
+      }
+    });
   } else {
     request(req.body.url, function(error, response, html){
       parsedObj = parseRegularWebsite(html, req.body.url);
- 
+      parsedObj.type = 'url';
+
       // send header and response
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(parsedObj));
