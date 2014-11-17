@@ -136,12 +136,15 @@ parseYoutube = function(response, url) {
   } else {
     parsedBody = response.body;
   }
+
+  var html = parsedBody.html.replace('width="480', '').replace('height="270"', 'style="position: absolute; left: 0; top: 0;"');
+
   return {
     title: parsedBody.title,
     thumbnail: parsedBody.thumbnail_url,
     type: 'video',
     url: url,
-    embed: parsedBody.html,
+    embed: html,
     full_response: parsedBody
   };
 };
