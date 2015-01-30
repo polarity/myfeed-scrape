@@ -180,6 +180,31 @@ parseYoutube = function(response, url) {
 		full_response: parsedBody
 	};
 };
+parseGfycat = function(response, url) {
+	var parsedBody;
+	if (typeof response.body != 'object') {
+		parsedBody = JSON.parse(response.body);
+	} else {
+		parsedBody = response.body;
+	}
+	parsedBody = parsedBody.gfyItem;
+
+	console.log(parsedBody, response.body);
+	return {
+		title: parsedBody.gfyName,
+		description: "Animated Loop from gfycat by " + parsedBody.userName,
+		thumbnail: parsedBody.gifUrl,
+		type: 'video',
+		url: url,
+		embed: '<video style="width: 100%;" preload="auto" autoplay="autoplay" muted="muted" loop>\
+<source src="' + parsedBody.webmUrl + '" type="video/webm">\
+<source src="' + parsedBody.mp4Url + '" type="video/mp4">\
+<img src="' + parsedBody.gifUrl + '" title="Your browser does not support the video tag">\
+</video>',
+		full_response: parsedBody
+	};
+};
+
 // get the site, parse it and return what we found
 exports.scrape = function(req, res) {
 	var parsedObj;
@@ -270,6 +295,19 @@ exports.scrape = function(req, res) {
 		request('https://vine.co/oembed.json?&url=' + req.body.url, function(error, response, html) {
 			if (response.statusCode == 200) {
 				parsedObj = parseVine(response, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Vine access failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
+		});
+	} else if (req.body.url.indexOf('gfycat.com/') !== -1) {
+		request('http://gfycat.com/cajax/get/' + req.body.url.split("/")[req.body.url.split("/").length - 1], function(error, response, html) {
+			if (response.statusCode == 200) {
+				parsedObj = parseGfycat(response, req.body.url);
 				// send header and response
 				res.setHeader('Content-Type', 'application/json');
 				res.end(JSON.stringify(parsedObj));
