@@ -92,7 +92,6 @@ parseSoundcloud = function(response, url) {
 // parse a known sound portal
 parseSpotify = function(response, url) {
 	var parsedBody;
-	console.log(response.body);
 	if (typeof response.body != 'object') {
 		if (!response || response == '') {
 			return false;
@@ -188,8 +187,6 @@ parseGfycat = function(response, url) {
 		parsedBody = response.body;
 	}
 	parsedBody = parsedBody.gfyItem;
-
-	console.log(parsedBody, response.body);
 	return {
 		title: parsedBody.gfyName,
 		description: "Animated Loop from gfycat by " + parsedBody.userName,
