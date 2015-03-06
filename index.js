@@ -30,13 +30,14 @@ parseRegularWebsite = function(html, url) {
 	};
 };
 // parse a image file
-parseImage = function(html, url) {
-	var data = parseRegularWebsite(html, url);
-	data.title = "Photo";
-	data.description = "";
-	data.thumbnail = url;
-	data.type = 'image';
-	data.embed = '<a href="' + url + '"><img src="' + url + '" alt="Photo"></a>';
+parseImage = function(url) {
+	var data = {
+		title: "Photo",
+		description: "",
+		thumbnail: url,
+		type: 'image',
+		embed: '<a href="' + url + '"><img src="' + url + '" alt="Photo"></a>'
+	};
 	return data;
 };
 // parse a known image hoster
@@ -207,46 +208,75 @@ exports.scrape = function(req, res) {
 	var parsedObj;
 	// parse different sites and media different ;)
 	if (req.body.url.indexOf('.jpg') !== -1 || req.body.url.indexOf('.jpeg') !== -1 || req.body.url.indexOf('.gif') !== -1 || req.body.url.indexOf('.png') !== -1) {
-		request(req.body.url, function(error, response, html) {
-			parsedObj = parseImage(html, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
-		});
+		// no request needed, it´s an image!
+		parsedObj = parseImage(req.body.url);
+		// send header and response
+		res.setHeader('Content-Type', 'application/json');
+		res.end(JSON.stringify(parsedObj));
 	} else if (req.body.url.indexOf('flickr.com/') !== -1) {
 		request(req.body.url, function(error, response, html) {
-			parsedObj = parseImageSite(html, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (!error && response.statusCode == 200) {
+				parsedObj = parseImageSite(html, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Flickr failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	} else if (req.body.url.indexOf('imgur.com/') !== -1) {
 		request(req.body.url, function(error, response, html) {
-			parsedObj = parseImgur(html, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (!error && response.statusCode == 200) {
+				parsedObj = parseImgur(html, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Imgur failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	} else if (req.body.url.indexOf('youtube.com/') !== -1 || req.body.url.indexOf('youtu.be/') !== -1) {
 		request('http://www.youtube.com/oembed?url=' + req.body.url + '&format=json', function(error, response, html) {
-			parsedObj = parseYoutube(response, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (!error && response.statusCode == 200) {
+				parsedObj = parseYoutube(response, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Youtube failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	} else if (req.body.url.indexOf('vimeo.com/') !== -1) {
 		request(req.body.url, function(error, response, html) {
-			parsedObj = parseVideoSite(html, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (!error && response.statusCode == 200) {
+				parsedObj = parseVideoSite(html, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Vimeo failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	} else if (req.body.url.indexOf('soundcloud.com/') !== -1) {
 		request('http://soundcloud.com/oembed?format=json&amp;url=' + req.body.url, function(error, response, html) {
-			parsedObj = parseSoundcloud(response, req.body.url);
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (!error && response.statusCode == 200) {
+				parsedObj = parseSoundcloud(response, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Soundcloud failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	} else if (req.body.url.indexOf('spotify.com/') !== -1) {
 		request('https://embed.spotify.com/oembed/?url=' + req.body.url, function(error, response, html) {
@@ -316,11 +346,17 @@ exports.scrape = function(req, res) {
 		});
 	} else {
 		request(req.body.url, function(error, response, html) {
-			parsedObj = parseRegularWebsite(html, req.body.url);
-			parsedObj.type = 'url';
-			// send header and response
-			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify(parsedObj));
+			if (response.statusCode == 200) {
+				parsedObj = parseRegularWebsite(html, req.body.url);
+				parsedObj.type = 'url';
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Regular Website parsing failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
 		});
 	}
 };
