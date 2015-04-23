@@ -36,6 +36,7 @@ parseImage = function(url) {
 		description: "",
 		thumbnail: url,
 		type: 'image',
+		url: url,
 		embed: '<a href="' + url + '"><img src="' + url + '" alt="Photo"></a>'
 	};
 	return data;
