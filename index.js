@@ -170,7 +170,7 @@ parseYoutube = function(response, url) {
 		parsedBody = response.body;
 	}
 
-	var html = parsedBody.html.replace('width="480', '').replace('height="270"', 'style="position: absolute; left: 0; top: 0;"');
+	var html = parsedBody.html.replace('width="480', '').replace('height="270"', 'class="youtube"');
 
 	return {
 		title: parsedBody.title,
