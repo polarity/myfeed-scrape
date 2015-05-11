@@ -1,8 +1,10 @@
-var cheerio, parseImageSite, parseImage, parseRegularWebsite, request;
+var cheerio, parseImageSite, parseImage, parseRegularWebsite, request, iconv;
 
 request = require('request');
 cheerio = require('cheerio');
 Boom = require('boom');
+iconv = require('iconv');
+
 // parse a normal website
 parseRegularWebsite = function(html, url) {
 	var $, apple_icon, description, thumbnail, title;
@@ -95,7 +97,7 @@ parseSoundcloud = function(response, url) {
 parseSpotify = function(response, url) {
 	var parsedBody;
 	if (typeof response.body != 'object') {
-		if (!response || response == '') {
+		if (!response || response === '') {
 			return false;
 		} else {
 			parsedBody = JSON.parse(response.body);
@@ -150,10 +152,9 @@ parseVine = function(response, url) {
 };
 // parse twitter
 parseTwitter = function(response, url) {
-	var parsedBody;
 	$ = cheerio.load(response);
 	return {
-		title: $('meta[property="og:title"]').attr('content'),
+		title: $('title').text(),
 		description: $('.permalink-tweet p.js-tweet-text').text(),
 		thumbnail: $('meta[property="og:image"]').attr('content'),
 		type: 'article',
@@ -346,18 +347,26 @@ exports.scrape = function(req, res) {
 			}
 		});
 	} else {
-		request(req.body.url, function(error, response, html) {
-			if (response.statusCode == 200) {
-				parsedObj = parseRegularWebsite(html, req.body.url);
-				parsedObj.type = 'url';
-				// send header and response
-				res.setHeader('Content-Type', 'application/json');
-				res.end(JSON.stringify(parsedObj));
-			} else {
-				// respond with error
-				response = Boom.badRequest('Regular Website parsing failed');
-				res.status(response.output.statusCode).send(response.output.payload);
-			}
-		});
+		request({
+			url: req.body.url,
+			encoding: null
+		}, function(error, response, html) {
+				if (response.statusCode == 200) {
+
+					var ic = new iconv.Iconv('iso-8859-1', 'utf-8');
+					var buf = ic.convert(html);
+					var utf8String = buf.toString('utf-8');
+
+					parsedObj = parseRegularWebsite(utf8String, req.body.url);
+					parsedObj.type = 'url';
+					// send header and response
+					res.setHeader('Content-Type', 'application/json');
+					res.end(JSON.stringify(parsedObj));
+				} else {
+					// respond with error
+					response = Boom.badRequest('Regular Website parsing failed');
+					res.status(response.output.statusCode).send(response.output.payload);
+				}
+			});
 	}
 };
