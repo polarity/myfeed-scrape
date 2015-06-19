@@ -133,7 +133,7 @@ parseInstagram = function(response, url) {
 		full_response: parsedBody
 	};
 };
-// instagram oembed
+// Vine oembed
 parseVine = function(response, url) {
 	var parsedBody;
 	if (typeof response.body != 'object') {
@@ -201,6 +201,28 @@ parseGfycat = function(response, url) {
 <source src="' + parsedBody.mp4Url + '" type="video/mp4">\
 <img src="' + parsedBody.gifUrl + '" title="Your browser does not support the video tag">\
 </video>',
+		full_response: parsedBody
+	};
+};
+
+// Mixcloud oembed
+parseMixcloud = function(response, url) {
+	var parsedBody;
+	if (typeof response.body != 'object') {
+		parsedBody = JSON.parse(response.body);
+	} else {
+		parsedBody = response.body;
+	}
+
+	// Remove element width and set it to css 100% width
+	var html = parsedBody.html.replace('width="300', 'style="width:100%;" class="mixcloud"');
+
+	return {
+		title: parsedBody.title,
+		thumbnail: parsedBody.thumbnail_url,
+		type: 'sound',
+		url: url,
+		embed: html,
 		full_response: parsedBody
 	};
 };
@@ -346,27 +368,40 @@ exports.scrape = function(req, res) {
 				res.status(response.output.statusCode).send(response.output.payload);
 			}
 		});
+	} else if (req.body.url.indexOf('mixcloud.com/') !== -1) {
+		request('https://www.mixcloud.com/oembed/?format=json&url=' + req.body.url, function(error, response, html) {
+			if (response.statusCode == 200) {
+				parsedObj = parseMixcloud(response, req.body.url);
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Mixcloud access failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
+		});
 	} else {
 		request({
 			url: req.body.url,
 			encoding: null
 		}, function(error, response, html) {
-				if (response.statusCode == 200) {
+			if (response.statusCode == 200) {
 
-					var ic = new iconv.Iconv('iso-8859-1', 'utf-8');
-					var buf = ic.convert(html);
-					var utf8String = buf.toString('utf-8');
+				var ic = new iconv.Iconv('iso-8859-1', 'utf-8');
+				var buf = ic.convert(html);
+				var utf8String = buf.toString('utf-8');
 
-					parsedObj = parseRegularWebsite(utf8String, req.body.url);
-					parsedObj.type = 'url';
-					// send header and response
-					res.setHeader('Content-Type', 'application/json');
-					res.end(JSON.stringify(parsedObj));
-				} else {
-					// respond with error
-					response = Boom.badRequest('Regular Website parsing failed');
-					res.status(response.output.statusCode).send(response.output.payload);
-				}
-			});
+				parsedObj = parseRegularWebsite(utf8String, req.body.url);
+				parsedObj.type = 'url';
+				// send header and response
+				res.setHeader('Content-Type', 'application/json');
+				res.end(JSON.stringify(parsedObj));
+			} else {
+				// respond with error
+				response = Boom.badRequest('Regular Website parsing failed');
+				res.status(response.output.statusCode).send(response.output.payload);
+			}
+		});
 	}
 };

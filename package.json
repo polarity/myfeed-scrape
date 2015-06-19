@@ -1,6 +1,6 @@
 {
   "name": "myfeed-scrape",
-  "version": "0.0.10",
+  "version": "0.0.2",
   "description": "scrapes websites and returns nice informations",
   "main": "index.js",
   "scripts": {
@@ -12,10 +12,10 @@
   "author": "Robert Agthe",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "request": "~2.40.0",
+    "boom": "^2.6.1",
     "cheerio": "~0.17.0",
-    "boom": "~2.6.0",
-    "iconv": "~2.1.7"
+    "iconv": "^2.1.8",
+    "request": "~2.40.0"
   },
   "repository": {
     "type": "git",
