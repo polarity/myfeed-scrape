@@ -5,6 +5,23 @@ cheerio = require('cheerio');
 Boom = require('boom');
 iconv = require('iconv');
 
+/**
+ * Extract header params
+ * @author Robert Agthe <robert@scriptshit.de
+ */
+var getParams = function(str) {
+	var params = str.split(';').reduce(function(params, param) {
+		var parts = param.split('=').map(function(part) {
+			return part.trim();
+		});
+		if (parts.length === 2) {
+			params[parts[0]] = parts[1];
+		}
+		return params;
+	}, {});
+	return params;
+};
+
 // parse a normal website
 parseRegularWebsite = function(html, url) {
 	var $, apple_icon, description, thumbnail, title;
@@ -387,8 +404,8 @@ exports.scrape = function(req, res) {
 			encoding: null
 		}, function(error, response, html) {
 			if (response.statusCode == 200) {
-
-				var ic = new iconv.Iconv('iso-8859-1', 'utf-8');
+				var charset = getParams(response.headers['content-type'] || '').charset;
+				var ic = new iconv.Iconv(charset, 'utf-8');
 				var buf = ic.convert(html);
 				var utf8String = buf.toString('utf-8');
 
