@@ -405,11 +405,18 @@ exports.scrape = function(req, res) {
 		}, function(error, response, html) {
 			if (response.statusCode == 200) {
 				var charset = getParams(response.headers['content-type'] || '').charset;
-				var ic = new iconv.Iconv(charset, 'utf-8');
-				var buf = ic.convert(html);
-				var utf8String = buf.toString('utf-8');
-
-				parsedObj = parseRegularWebsite(utf8String, req.body.url);
+				// only convert when content type available
+				if(charset){
+					// convert to utf8
+					var ic = new iconv.Iconv(charset, 'utf-8');
+					var buf = ic.convert(html);
+					var websiteAsString = buf.toString('utf-8');
+				} else {
+					// no charset? just use the string
+					// without utf8 conversion
+					websiteAsString = html;
+				}
+				parsedObj = parseRegularWebsite(websiteAsString, req.body.url);
 				parsedObj.type = 'url';
 				// send header and response
 				res.setHeader('Content-Type', 'application/json');
