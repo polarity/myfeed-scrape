@@ -1,6 +1,6 @@
 {
   "name": "myfeed-scrape",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "scrapes websites and returns nice informations",
   "main": "index.js",
   "scripts": {
@@ -14,7 +14,7 @@
   "dependencies": {
     "boom": "^2.6.1",
     "cheerio": "~0.17.0",
-    "iconv": "^2.1.8",
+    "iconv": ">=2.1.4",
     "request": "~2.40.0"
   },
   "repository": {
